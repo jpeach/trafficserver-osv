@@ -1,0 +1,36 @@
+base:
+  cloudius/osv-base
+
+cmdline:
+  --verbose /trafficserver/osv-trafficserver.so
+
+make:
+  mkdir -p osv/usr/lib
+
+  # Build Traffic Server in OSv mode. This builds the main proxy binary as a
+  # DSO and enables various hacks and workarounds.
+  ./configure --enable-osv --disable-hwloc --prefix=/trafficserver
+  make -j4
+  make install DESTDIR=`pwd`/osv
+
+  cd osv
+  cp --copy-contents trafficserver/lib/libtsutil.so.5 usr/lib
+  cp trafficserver/lib/osv-trafficserver.so trafficserver
+  cd trafficserver && rm -rf lib man share bin include libexec
+
+  # Snaffle system libraries we depend on. The following library
+  # paths are for Ubuntu 14.04. We should really look at the ELF
+  # imports to make this generic ...
+  cp /lib/x86_64-linux-gnu/libssl.so.1.0.0 osv/usr/lib
+  cp /lib/x86_64-linux-gnu/libcrypto.so.1.0.0 osv/usr/lib
+  cp /usr/lib/x86_64-linux-gnu/libtcl8.6.so osv/usr/lib
+  cp /lib/x86_64-linux-gnu/libpcre.so.3 osv/usr/lib
+  cp --copy-contents /lib/x86_64-linux-gnu/libcap.so.2 osv/usr/lib
+
+  # Note that Capstan only copies files. I have a local patch that lets it also
+  # copy the directories that Traffic Server needs to start.
+
+rootfs:
+  osv
+
+# vim: ft=yaml et sw=2 ts=2 :
